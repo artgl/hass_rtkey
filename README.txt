@@ -1,0 +1,5 @@
+This integration retrieves info about all available cameras from key.rt.ru service and creates corresponding image entries with camera previews. Prior using it you need to get bearer token for api queries. You can find it via logging to https://key.rt.ru/main/pwa/dashboard and searching for vc.key.rt.ru queries in browser developer console. After that add following section into HA configuration.yaml:
+
+rtkey:
+  token: <bearer token>
+  camera_image_refresh_interval: <seconds>
