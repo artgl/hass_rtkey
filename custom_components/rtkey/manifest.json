@@ -1,8 +1,9 @@
 {
     "domain": "rtkey",
     "name": "rtkey",
-    "documentation": "https://github.com/artgl/hass-rtkey",
+    "documentation": "https://github.com/artgl/hass_rtkey",
     "iot_class": "cloud_polling",
     "version": "0.0.1",
-    "requirements": ["transliterate", "pyjwt"]
+    "requirements": ["transliterate", "pyjwt"],
+    "config_flow": true
 }

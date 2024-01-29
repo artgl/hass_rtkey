@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "name": "Entry name (should be uniq, i.e room number)",
+          "token": "Access token",
+          "camera_image_refresh_interval": "Camera image refresh interval"
+        }
+      }
+    }
+  }
+}

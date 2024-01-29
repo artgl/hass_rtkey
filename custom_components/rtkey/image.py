@@ -9,29 +9,30 @@ import re
 import jwt
 import asyncio
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.core import ServiceCall
 
-from . import DOMAIN
-_LOGGER = logging.getLogger(DOMAIN)
-_LOGGER.setLevel(logging.INFO)
+from . import DOMAIN, _LOGGER
 
 class RTKeyCamerasApi:
     def __init__(
         self,
-        hass: HomeAssistant
+        hass: HomeAssistant,
+        config_entry: ConfigEntry
     ) -> None:
         self.hass = hass
-        self.token = hass.data[DOMAIN]["token"]
+        self.token = hass.data[DOMAIN][config_entry.entry_id]["token"]
         self.lock = asyncio.Lock()
         self.camera_image_locks = {}
         self.cached_cameras_info = None
         self.cached_camera_images = {}
         self.camera_image_tasks = {}
-        self.camera_image_refresh_interval = hass.data[DOMAIN]["camera_image_refresh_interval"]
+        self.camera_image_refresh_interval = hass.data[DOMAIN][config_entry.entry_id]["camera_image_refresh_interval"]
 
     async def get_cameras_info(self) -> dict:
         async with self.lock:
@@ -107,42 +108,48 @@ class RTKeyCamerasApi:
             del self.cached_camera_images[camera_id]
         _LOGGER.info("Deleted cached image for camera {camera_id}".format(camera_id=camera_id));
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None
-) -> None:
+async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.info("Retrieving info about available cameras");
 
-    cameras_api = RTKeyCamerasApi(hass)
+    cameras_api = RTKeyCamerasApi(hass, config_entry)
 
     cameras_info = await cameras_api.get_cameras_info()
 
     entities = []
     for camera_info in cameras_info["data"]["items"]:
         camera_id = camera_info["id"]
-        name = translit(camera_info["title"], "ru", reversed=True)
-        name2 = re.sub("[^a-zA-z0-9]+", "_", name).rstrip("_").lower()
-        entity_id = "image.{domain}_{camera_name}".format(domain=DOMAIN,camera_name=name2)
-        entities.append(RTKeyCameraImageEntity(hass, cameras_api, camera_id, name, entity_id))
-    add_entities(entities)
+        entities.append(RTKeyCameraImageEntity(hass, config_entry, cameras_api, camera_id, camera_info))
+    async_add_entities(entities)
 
 class RTKeyCameraImageEntity(ImageEntity):
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         cameras_api: RTKeyCamerasApi,
         camera_id: str,
-        name: str,
-        entity_id: str
+        camera_info: dict
     ) -> None:
+
         self.hass = hass
+        self.config_entry_id = config_entry.entry_id
+        self.config_entry_name = hass.data[DOMAIN][config_entry.entry_id]["name"]
         self.cameras_api = cameras_api
         self.camera_id = camera_id
-        self.name = name
-        self.entity_id = entity_id
-        self.camera_image_refresh_interval = hass.data[DOMAIN]["camera_image_refresh_interval"]
+
+        camera_name = camera_info["title"].lower()
+        camera_name = f"{self.config_entry_name} {camera_name}"
+        camera_name = translit(camera_name, "ru", reversed=True)
+        camera_name = camera_name.capitalize()
+
+        self.camera_name = camera_name
+        self.entity_name = camera_name
+        self.entity_id = DOMAIN + "." + re.sub("[^a-zA-z0-9]+", "_", self.entity_name).rstrip("_").lower()
+        self.camera_image_refresh_interval = hass.data[DOMAIN][config_entry.entry_id]["camera_image_refresh_interval"]
+
+        self._attr_unique_id = self.entity_id
+        self._attr_name = self.entity_name
+
         super().__init__(hass)
 
     async def async_image(self) -> bytes | None:
@@ -154,3 +161,14 @@ class RTKeyCameraImageEntity(ImageEntity):
         await asyncio.sleep(ttl)
         self._attr_image_last_updated = datetime.now()
         await self.hass.services.async_call("homeassistant", "update_entity", {"entity_id": self.entity_id}, blocking=False)
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return {
+            "identifiers": {(DOMAIN, f"{self.config_entry_id}_{self.camera_id}")},
+            "name": self.camera_name,
+        }
+
+    @property
+    def available(self) -> bool:
+        return True
