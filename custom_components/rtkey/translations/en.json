@@ -3,9 +3,19 @@
     "step": {
       "user": {
         "data": {
-          "name": "Entry name (should be uniq, i.e room number)",
+          "name": "Entry name (should be uniq, i.e myflat or flat123)",
           "token": "Access token",
-          "camera_image_refresh_interval": "Camera image refresh interval"
+          "camera_image_refresh_interval": "Camera image refresh interval (sec)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "token": "Access token",
+          "camera_image_refresh_interval": "Camera image refresh interval (sec)"
         }
       }
     }

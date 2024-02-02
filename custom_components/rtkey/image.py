@@ -17,7 +17,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.core import ServiceCall
 
-from . import DOMAIN, _LOGGER
+from . import DOMAIN, _LOGGER, CONF_NAME, CONF_TOKEN, CONF_CAMERA_IMAGE_REFRESH_INTERVAL
 
 class RTKeyCamerasApi:
     def __init__(
@@ -26,13 +26,13 @@ class RTKeyCamerasApi:
         config_entry: ConfigEntry
     ) -> None:
         self.hass = hass
-        self.token = hass.data[DOMAIN][config_entry.entry_id]["token"]
+        self.token = config_entry.options[CONF_TOKEN]
         self.lock = asyncio.Lock()
         self.camera_image_locks = {}
         self.cached_cameras_info = None
         self.cached_camera_images = {}
         self.camera_image_tasks = {}
-        self.camera_image_refresh_interval = hass.data[DOMAIN][config_entry.entry_id]["camera_image_refresh_interval"]
+        self.camera_image_refresh_interval = config_entry.options[CONF_CAMERA_IMAGE_REFRESH_INTERVAL]
 
     async def get_cameras_info(self) -> dict:
         async with self.lock:
@@ -133,7 +133,7 @@ class RTKeyCameraImageEntity(ImageEntity):
 
         self.hass = hass
         self.config_entry_id = config_entry.entry_id
-        self.config_entry_name = hass.data[DOMAIN][config_entry.entry_id]["name"]
+        self.config_entry_name = config_entry.data[CONF_NAME]
         self.cameras_api = cameras_api
         self.camera_id = camera_id
 
@@ -145,7 +145,7 @@ class RTKeyCameraImageEntity(ImageEntity):
         self.camera_name = camera_name
         self.entity_name = camera_name
         self.entity_id = DOMAIN + "." + re.sub("[^a-zA-z0-9]+", "_", self.entity_name).rstrip("_").lower()
-        self.camera_image_refresh_interval = hass.data[DOMAIN][config_entry.entry_id]["camera_image_refresh_interval"]
+        self.camera_image_refresh_interval = config_entry.options[CONF_CAMERA_IMAGE_REFRESH_INTERVAL]
 
         self._attr_unique_id = self.entity_id
         self._attr_name = self.entity_name
