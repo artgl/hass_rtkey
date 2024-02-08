@@ -18,10 +18,8 @@ from homeassistant.components import ffmpeg
 from . import RTKeyCamerasApi, DOMAIN, _LOGGER, CONF_NAME
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    cameras_api = RTKeyCamerasApi(hass, config_entry)
-
+    cameras_api = hass.data[config_entry.entry_id]["cameras_api"]
     cameras_info = await cameras_api.get_cameras_info()
-
     entities = []
     for camera_info in cameras_info["data"]["items"]:
         entities.append(RTKeyCamera(hass, config_entry, cameras_api, camera_info))

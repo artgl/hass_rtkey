@@ -33,12 +33,19 @@ _LOGGER = logging.getLogger(DOMAIN)
 _LOGGER.setLevel(logging.INFO)
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    _LOGGER.info(["async_setup_entry", config_entry.data, config_entry.options])
+    hass.data[config_entry.entry_id] = {
+        "cameras_api": RTKeyCamerasApi(hass, config_entry)
+    }
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     return True
 
+
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
-    return True
+    res = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
+    if res:
+        del hass.data[config_entry.entity_id]
+    return res
 
 class RTKeyCamerasApi:
     def __init__(
