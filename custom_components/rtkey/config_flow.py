@@ -1,10 +1,13 @@
-import logging
 import voluptuous as vol
-
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    OptionsFlowWithConfigEntry,
+)
 from homeassistant.core import callback
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlowWithConfigEntry
 
-from . import DOMAIN, DATA_SCHEMA, OPTIONS_SCHEMA
+from . import DATA_SCHEMA, DOMAIN, OPTIONS_SCHEMA
+
 
 class RTKeyOptionsFlow(OptionsFlowWithConfigEntry):
     async def async_step_init(self, user_input):

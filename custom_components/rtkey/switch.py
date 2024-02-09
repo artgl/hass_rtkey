@@ -1,13 +1,14 @@
-from typing import Any
-import re
 import asyncio
+import re
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from . import RTKeyCamerasApi, DOMAIN, _LOGGER
+from . import DOMAIN, RTKeyCamerasApi
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     cameras_api = hass.data[config_entry.entry_id]["cameras_api"]
@@ -51,12 +52,10 @@ class RTKeySwitchEntity(SwitchEntity):
         await self.cameras_api.open_intercom(self.intercom_id)
         self._attr_is_on = True
         self.auto_turn_off_task = asyncio.create_task(self.auto_turn_off())
-        pass
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
         self._attr_is_on = False
-        pass
 
     async def auto_turn_off(self) -> None:
         await asyncio.sleep(5)

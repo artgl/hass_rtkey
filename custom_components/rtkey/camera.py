@@ -1,20 +1,18 @@
-import logging
 import re
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.camera import Camera, CameraEntityFeature
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from . import RTKeyCamerasApi, DOMAIN, _LOGGER
+from . import _LOGGER, DOMAIN, RTKeyCamerasApi
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     cameras_api = hass.data[config_entry.entry_id]["cameras_api"]
     cameras_info = await cameras_api.get_cameras_info()
-    entities = []
-    for camera_info in cameras_info["data"]["items"]:
-        entities.append(RTKeyCamera(hass, config_entry, cameras_api, camera_info))
+    entities = [RTKeyCamera(hass, config_entry, cameras_api, camera_info)
+                for camera_info in cameras_info["data"]["items"]]
     async_add_entities(entities)
 
 class RTKeyCamera(Camera):
@@ -39,7 +37,7 @@ class RTKeyCamera(Camera):
         self._attr_supported_features = CameraEntityFeature.STREAM
 
     async def stream_source(self) -> str | None:
-        _LOGGER.info(f"stream_source")
+        _LOGGER.info("stream_source")
         url = await self.cameras_api.get_camera_stream_url(self.camera_id)
         _LOGGER.info(f"Camera {self.camera_id} url is {url}")
         return url
