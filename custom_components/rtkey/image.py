@@ -1,21 +1,20 @@
-import logging
-from datetime import datetime
-import re
 import asyncio
+import re
+from datetime import datetime
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.image import ImageEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from . import RTKeyCamerasApi, DOMAIN, _LOGGER, CONF_CAMERA_IMAGE_REFRESH_INTERVAL
+from . import CONF_CAMERA_IMAGE_REFRESH_INTERVAL, DOMAIN, RTKeyCamerasApi
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     cameras_api = hass.data[config_entry.entry_id]["cameras_api"]
     cameras_info = await cameras_api.get_cameras_info()
-    entities = []
-    for camera_info in cameras_info["data"]["items"]:
-        entities.append(RTKeyCameraImageEntity(hass, config_entry, cameras_api, camera_info))
+    entities = [RTKeyCameraImageEntity(hass, config_entry, cameras_api, camera_info)
+                for camera_info in cameras_info["data"]["items"]]
     async_add_entities(entities)
 
 class RTKeyCameraImageEntity(ImageEntity):
@@ -46,7 +45,7 @@ class RTKeyCameraImageEntity(ImageEntity):
 
     async def set_image_last_updated(self, ttl: int) -> None:
         await asyncio.sleep(ttl)
-        self._attr_image_last_updated = datetime.now()
+        self._attr_image_last_updated = datetime.now()  # @todo Specify tz argument, see https://docs.astral.sh/ruff/rules/call-datetime-now-without-tzinfo/
         await self.hass.services.async_call("homeassistant", "update_entity", {"entity_id": self.entity_id}, blocking=False)
 
     @property

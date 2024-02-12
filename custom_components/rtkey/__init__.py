@@ -1,17 +1,17 @@
-import voluptuous as vol
-import logging
-import json
 import asyncio
 import functools
-import jwt
-import requests
-from transliterate import translit
+import json
+import logging
 import time
 from urllib.parse import urlparse
 
+import jwt
+import requests
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
+from transliterate import translit
 
 DOMAIN = "rtkey"
 
@@ -106,6 +106,7 @@ class RTKeyCamerasApi:
         for camera_info in cameras_info["data"]["items"]:
             if camera_info["id"] == camera_id:
                 return camera_info
+        return None
 
     async def get_camera_image(self, camera_id: str) -> bytes | None:
         camera_info = await self.get_camera_info(camera_id)
@@ -115,31 +116,33 @@ class RTKeyCamerasApi:
             await self.clear_cached_cameras_info()
             camera_info = await self.get_camera_info(camera_id)
 
-        if camera_info:
-            async with self.camera_image_locks[camera_id]:
-                if camera_id in self.cached_camera_images:
-                    _LOGGER.info(f"Using cached image for camera {camera_id}");
-                    return self.cached_camera_images[camera_id]
+        if not camera_info:
+            return None
 
-                size = "large"
-                url = camera_info["screenshot_url_template"].format(
-                    timestamp=now,
-                    size=size,
-                    cdn_token=camera_info["screenshot_token"]
-                )
-                _LOGGER.info(f"Fetching {url}");
-                r = await self.hass.async_add_executor_job(functools.partial(
-                    requests.get,
-                    url,
-                    allow_redirects=True,
-                    headers={"X-UTOKEN": camera_info["user_token"]}
-                ))
-                _LOGGER.info(r);
+        async with self.camera_image_locks[camera_id]:
+            if camera_id in self.cached_camera_images:
+                _LOGGER.info("Using cached image for camera %s", camera_id)
+                return self.cached_camera_images[camera_id]
 
-                self.cached_camera_images[camera_id] = r.content
-                self.camera_image_tasks[camera_id] = asyncio.create_task(self.clear_cached_camera_image(camera_id, self.camera_image_refresh_interval))
+            size = "large"
+            url = camera_info["screenshot_url_template"].format(
+                timestamp=now,
+                size=size,
+                cdn_token=camera_info["screenshot_token"]
+            )
+            _LOGGER.info("Fetching %s", url)
+            r = await self.hass.async_add_executor_job(functools.partial(
+                requests.get,
+                url,
+                allow_redirects=True,
+                headers={"X-UTOKEN": camera_info["user_token"]}
+            ))
+            _LOGGER.info(r)
 
-                return r.content
+            self.cached_camera_images[camera_id] = r.content
+            self.camera_image_tasks[camera_id] = asyncio.create_task(self.clear_cached_camera_image(camera_id, self.camera_image_refresh_interval))
+
+            return r.content
 
     async def get_camera_stream_url(self, camera_id: str) -> str | None:
         camera_info = await self.get_camera_info(camera_id)
@@ -149,24 +152,24 @@ class RTKeyCamerasApi:
             await self.clear_cached_cameras_info()
             camera_info = await self.get_camera_info(camera_id)
 
-        if camera_info:
-            camera_netloc = urlparse(camera_info["streamer_url"]).netloc
-            streamer_token = camera_info["streamer_token"]
-            url = f"https://{camera_netloc}/stream/{camera_id}/live.mp4?mp4-fragment-length=0.5&mp4-use-speed=0&mp4-afiller=1&token={streamer_token}"
-            return url
+        if not camera_info:
+            return None
+
+        camera_netloc = urlparse(camera_info["streamer_url"]).netloc
+        streamer_token = camera_info["streamer_token"]
+        return f"https://{camera_netloc}/stream/{camera_id}/live.mp4?mp4-fragment-length=0.5&mp4-use-speed=0&mp4-afiller=1&token={streamer_token}"
 
     async def clear_cached_camera_image(self, camera_id: str, ttl: int) -> None:
         await asyncio.sleep(ttl)
         async with self.camera_image_locks[camera_id]:
             del self.cached_camera_images[camera_id]
-        _LOGGER.info(f"Deleted cached image for camera {camera_id}");
+        _LOGGER.info("Deleted cached image for camera %s", camera_id)
 
     def build_device_name(self, device_title) -> str:
         device_name = device_title.lower()
         device_name = f"{self.config_entry_name} {device_name}"
         device_name = translit(device_name, "ru", reversed=True)
-        device_name = device_name.capitalize()
-        return device_name
+        return device_name.capitalize()
 
     async def get_intercoms_info(self) -> dict:
         async with self.lock:
@@ -190,11 +193,11 @@ class RTKeyCamerasApi:
     async def open_intercom(self, intercom_id) -> None:
         async with self.lock:
             url = f"https://household.key.rt.ru/api/v2/app/devices/{intercom_id}/open"
-            _LOGGER.info(f"Fetching {url}");
+            _LOGGER.info("Fetching %s", url)
             r = await self.hass.async_add_executor_job(functools.partial(
                 requests.post,
                 url,
                 allow_redirects=True,
                 headers={"Authorization": f"Bearer {self.token}"},
             ))
-            _LOGGER.info(r);
+            _LOGGER.info(r)
