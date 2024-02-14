@@ -20,10 +20,10 @@ class RTKeyOptionsFlow(OptionsFlowWithConfigEntry):
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(
-                vol.Schema(OPTIONS_SCHEMA),
-                self.options
-            )
+                vol.Schema(OPTIONS_SCHEMA), self.options
+            ),
         )
+
 
 class RTKeyConfigFlow(ConfigFlow, domain=DOMAIN):
     # The schema version of the entries that it creates
@@ -41,9 +41,7 @@ class RTKeyConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input):
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input["name"],
-                data=user_input,
-                options=user_input
+                title=user_input["name"], data=user_input, options=user_input
             )
 
         return self.async_show_form(
