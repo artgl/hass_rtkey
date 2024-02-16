@@ -101,7 +101,11 @@ class RTKeyCamerasApi:
                 )
                 camera_info["streamer_token_exp"] = decoded_streamer_token["exp"]
 
-                self.camera_image_locks[camera_info["id"]] = asyncio.Lock()
+                camera_id = camera_info["id"]
+                if camera_id not in self.cached_camera_images:
+                    self.cached_camera_images[camera_id] = None
+                if camera_id not in self.camera_image_locks:
+                    self.camera_image_locks[camera_id] = asyncio.Lock()
 
             return self.cached_cameras_info
 
@@ -135,7 +139,7 @@ class RTKeyCamerasApi:
             return None
 
         async with self.camera_image_locks[camera_id]:
-            if camera_id in self.cached_camera_images:
+            if self.cached_camera_images[camera_id]:
                 _LOGGER.info("Using cached image for camera %s", camera_id)
                 return self.cached_camera_images[camera_id]
 
@@ -184,7 +188,7 @@ class RTKeyCamerasApi:
     async def clear_cached_camera_image(self, camera_id: str, ttl: int) -> None:
         await asyncio.sleep(ttl)
         async with self.camera_image_locks[camera_id]:
-            del self.cached_camera_images[camera_id]
+            self.cached_camera_images[camera_id] = None
         _LOGGER.info("Deleted cached image for camera %s", camera_id)
 
     def build_device_name(self, device_title) -> str:
